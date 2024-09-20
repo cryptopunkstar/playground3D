@@ -1,70 +1,125 @@
-# Getting Started with Create React App
+# Dymension Connect
+<p align="center">
+  <img src="./images/widget.png" alt="widget example">
+</p>
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Overview
+The Dymension Connect Widget allows RollApps to easily integrate wallet connection functionality into their applications, 
+facilitating user interactions with blockchain accounts. 
+Designed to be framework-agnostic, this widget can be seamlessly incorporated into projects built with React, Vue, Angular, or vanilla JavaScript.
 
-## Available Scripts
+## Usage
+To integrate the Dymension Connect Widget into your application, follow these steps:
 
-In the project directory, you can run:
+### Step 1: Define Environment and Network
+Specify the connection URL and network ID for your widget instance. These should match the blockchain network your application interacts with.
+```javascript
+const DYMENSION_CONNECT_URL = 'https://portal.dymension.xyz/';
+const DYMENSION_CONNECT_NETWORK_ID = 'dymension_1100-1';
+```
 
-### `npm start`
+### Step 2: Embed the Widget
+Embed the Dymension Connect Widget into your application using an iframe. This setup enables your users to interact with the widget directly from your UI.
+```jsx
+<iframe
+    ref={iframeRef}
+    onLoad={initModal}
+    style={{ display: dymensionConnectOpen ? 'block' : 'none' }}
+    allow="clipboard-read; clipboard-write"
+    title="dymension-connect"
+    className="dymension-connect-iframe"
+    src={`${DYMENSION_CONNECT_URL}/connect?networkId=${DYMENSION_CONNECT_NETWORK_ID}`}
+/>
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Step 3: Communicate with the Widget
+Maximize the utility and adaptability of the Dymension Connect Widget within your application by leveraging direct messaging. 
+This advanced method enables real-time communication with the widget's iframe, allowing you to dynamically adjust its appearance and behavior to suit user interactions and your application's styling needs. 
+Utilize the postMessage API to send messages from your application to the widget, enhancing user experience through customization and control.
+```javascript
+const sendMessage = useCallback((message) => {
+    iframeRef.current?.contentWindow?.postMessage(message, DYMENSION_CONNECT_URL);
+}, []);
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+sendMessage({
+    type: 'stylesChange',
+    styles: {
+        '--black-light': 'rgb(63 81 59)',
+        '--black-light-rgb': '63, 81, 59',
+        '--black-dark': 'rgb(27 40 24)',
+        '--black-dark-rgb': '27, 40, 24',
+        '--background-color': 'rgb(42 59 42)',
+        '--background-color-secondary': 'rgb(63 78 63)'
+    }
+});
+sendMessage({type: 'menuAlignChange', align: 'center'});
+```
+#### Optional messages that can be sent to the widget:
+- **`triggerBoundingRectChange`**: Adjusts the widget's position by specifying the trigger element's bounding rectangle.
+    ```javascript
+    sendMessage({ type: 'triggerBoundingRectChange', rect: /* DOMRect object */ });
+    ```
+- **`stylesChange`**: Modifies the widget's styles to better match your application's theme.
+    ```javascript
+    sendMessage({
+        type: 'stylesChange',
+        styles: {
+            '--control-color-normal': 'yourValue',
+            '--background-color': 'yourValue',
+            '--background-color-secondary': 'yourValue',
+            // Add more custom style properties as needed
+        }
+    });
+- **`menuAlignChange`**: Alters the alignment of the widget's menu relative to the trigger element, enhancing layout consistency and visual harmony.
+    ```javascript
+    sendMessage({ type: 'menuAlignChange', align: 'center' /* Or 'left', 'right' */ });
+    ```
+  
+### Step 4: Listen for Messages from the Widget
+To create a fully interactive experience, your application should listen for messages from the Dymension Connect Widget. 
+This allows your app to react to user actions within the widget, such as connecting or disconnecting a wallet. 
+Implement the listener within a `useEffect` to handle these messages appropriately:
+```javascript
+useEffect(() => {
+    const handleMessage = (event) => {
+        if (event.origin !== DYMENSION_CONNECT_URL) {
+            return;
+        }
+        switch (event.data.type) {
+            case 'ready':
+                setDymensionConnectReady(true);
+                break;
+            case 'close':
+                setDymensionConnectOpen(false);
+                break;
+            case 'connect':
+                setAddress(event.data.hexAddress);
+                updateTriggerBoundingRect();
+                break;
+            case 'disconnect':
+                setAddress('');
+                updateTriggerBoundingRect();
+                break;
+            default:
+                break;
+        }
+    };
 
-### `npm test`
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+}, [initModal, sendMessage, updateTriggerBoundingRect]);
+```
+#### Optional messages that can be received from the widget:
+- **`ready`**: Indicates the widget has fully loaded and is ready for user interaction.
+- **`close`**: Signifies the user has closed the widget, allowing you to hide the widget interface or reset its state.
+- **`connect`**: Notifies that a user has successfully connected their wallet. This message includes the user's address (bech32 address and hexAddress), enabling you to update the UI or trigger further actions.
+- **`disconnect`**: Indicates the user has disconnected their wallet. Use this message to clear user data from your UI or revert to a default state.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Listening for these messages and implementing corresponding actions in your application ensures a seamless and responsive experience for users interacting with the Dymension Connect Widget.
 
-### `npm run build`
+## Example
+For a complete example of how to integrate and use the Dymension Connect Widget in a React application, refer to the provided sample code in this repository.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Support
+For issues, questions, or contributions, please open an issue or pull request in the repository.
+# playground3D
